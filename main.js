@@ -114,7 +114,7 @@ function sanitizeWords(rawWords) {
       }
       if (entry && typeof entry === 'object') {
         const label = String(entry.label ?? '').trim();
-        const text = String(entry.text ?? '');
+        const text = String(entry.text ?? '').slice(0, 500);
         if (!label) {
           return null;
         }
