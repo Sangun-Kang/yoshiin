@@ -1,0 +1,27 @@
+{
+  "name": "yoshiin",
+  "version": "0.1.0",
+  "description": "A tray toy that slams a giant approval stamp onto your screen.",
+  "license": "MIT",
+  "main": "main.js",
+  "bin": {
+    "yoshiin": "bin/yoshiin.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "electron",
+    "tray",
+    "overlay",
+    "desktop-toy"
+  ],
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "dependencies": {
+    "electron": "^41.2.0",
+    "koffi": "^2.15.6"
+  }
+}
