@@ -96,7 +96,7 @@ PR、お待ちしております。
 本当にありがとうございます。とても面白かったです。
 どちらも AI との健全な関係を保つために必要な道具です。
 
-Ideas come from [badclaude] (https://github.com/GitFrog1111/badclaude) From。
+Ideas come from [badclaude](https://github.com/GitFrog1111/badclaude) From。
 thank you very much。 It was so much fun.
 Both are necessary tools to maintain a healthy relationship with AI.
 
