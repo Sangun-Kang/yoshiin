@@ -4,6 +4,13 @@
 
 <h1 align="center">yoshiin</h1>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/@sangun-kang/yoshiin"><img src="https://img.shields.io/npm/v/@sangun-kang/yoshiin.svg?color=%23e63927&label=npm" alt="npm version"/></a>
+  <a href="https://www.npmjs.com/package/@sangun-kang/yoshiin"><img src="https://img.shields.io/npm/dm/@sangun-kang/yoshiin.svg?color=%238b5f18" alt="downloads"/></a>
+  <img src="https://img.shields.io/badge/os-macOS%20%7C%20Windows-lightgrey" alt="os"/>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/@sangun-kang/yoshiin.svg?color=%23241810" alt="license"/></a>
+</p>
+
 ---
 
 AIエージェントが作った素敵なプランを、気持ちよく承認しましょう！
