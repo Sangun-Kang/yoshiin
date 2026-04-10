@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="yoshiin hero">
+  <defs>
+    <linearGradient id="paper" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#faf3e5"/>
+      <stop offset="100%" stop-color="#ecdcba"/>
+    </linearGradient>
+    <radialGradient id="paperGlow" cx="50%" cy="38%" r="60%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.6)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <linearGradient id="ivory" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#fff2b8"/>
+      <stop offset="22%" stop-color="#f4d56f"/>
+      <stop offset="55%" stop-color="#e2b841"/>
+      <stop offset="85%" stop-color="#b98826"/>
+      <stop offset="100%" stop-color="#8b5f18"/>
+    </linearGradient>
+    <linearGradient id="ivoryCap" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" stop-color="#fff6cc"/>
+      <stop offset="60%" stop-color="#f0c557"/>
+      <stop offset="100%" stop-color="#a07320"/>
+    </linearGradient>
+    <linearGradient id="woodGrain" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="18%" stop-color="rgba(255, 251, 220, 0.55)"/>
+      <stop offset="35%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="600" fill="url(#paper)"/>
+  <rect width="1200" height="600" fill="url(#paperGlow)"/>
+
+  <g opacity="0.05" stroke="#241810" stroke-width="1">
+    <line x1="0" y1="150" x2="1200" y2="150"/>
+    <line x1="0" y1="300" x2="1200" y2="300"/>
+    <line x1="0" y1="450" x2="1200" y2="450"/>
+    <line x1="200" y1="0" x2="200" y2="600"/>
+    <line x1="400" y1="0" x2="400" y2="600"/>
+    <line x1="600" y1="0" x2="600" y2="600"/>
+    <line x1="800" y1="0" x2="800" y2="600"/>
+    <line x1="1000" y1="0" x2="1000" y2="600"/>
+  </g>
+
+  <g transform="translate(380, 290) rotate(-2.5)">
+    <ellipse cx="8" cy="210" rx="180" ry="10" fill="rgba(30, 15, 5, 0.08)"/>
+    <circle cx="0" cy="0" r="200" fill="none" stroke="#c42e14" stroke-width="20" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="182" fill="none" stroke="#e63927" stroke-width="4"/>
+    <rect x="-130" y="-130" width="260" height="260" fill="none" stroke="#e63927" stroke-width="12"/>
+    <circle cx="0" cy="-192" r="14" fill="#e63927"/>
+    <circle cx="-188" cy="18" r="4" fill="#e63927" opacity="0.75"/>
+    <circle cx="190" cy="-30" r="5" fill="#e63927" opacity="0.7"/>
+    <circle cx="-55" cy="185" r="3" fill="#e63927" opacity="0.75"/>
+    <circle cx="155" cy="132" r="4" fill="#e63927" opacity="0.6"/>
+    <g font-family="'Hiragino Mincho ProN','Yu Mincho',Georgia,serif" font-weight="900" fill="#d8321a" text-anchor="middle" dominant-baseline="central" font-size="74" letter-spacing="-2">
+      <text x="-80" y="-82">Y</text>
+      <text x="0" y="-82">O</text>
+      <text x="80" y="-82">S</text>
+      <text x="-80" y="0">H</text>
+      <text x="0" y="0">I</text>
+      <text x="80" y="0">I</text>
+      <text x="-42" y="82">N</text>
+      <text x="42" y="82">!</text>
+    </g>
+  </g>
+
+  <g transform="translate(880, 300) rotate(18)">
+    <ellipse cx="18" cy="210" rx="95" ry="14" fill="rgba(20, 12, 6, 0.22)"/>
+    <path d="M -46 -180 Q -52 -214 0 -214 Q 52 -214 46 -180 L 54 152 Q 56 176 42 184 L -42 184 Q -56 176 -54 152 Z" fill="url(#ivory)" stroke="#6b4410" stroke-width="2.5"/>
+    <path d="M -46 -180 Q -52 -214 0 -214 Q 52 -214 46 -180 L 54 152 Q 56 176 42 184 L -42 184 Q -56 176 -54 152 Z" fill="url(#woodGrain)"/>
+    <ellipse cx="0" cy="-205" rx="36" ry="10" fill="url(#ivoryCap)" opacity="0.85"/>
+    <path d="M -30 -160 Q -35 -40 -38 100 Q -40 150 -36 170" stroke="rgba(255, 250, 215, 0.55)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M 28 -160 Q 32 -20 36 140" stroke="rgba(100, 60, 10, 0.25)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="0" cy="188" rx="50" ry="10" fill="#4a2b10"/>
+    <ellipse cx="0" cy="192" rx="48" ry="7" fill="#c42714"/>
+    <ellipse cx="0" cy="190" rx="44" ry="5" fill="#e63927"/>
+    <circle cx="42" cy="12" r="5.5" fill="#1a1208"/>
+    <circle cx="42" cy="12" r="1.8" fill="rgba(255,255,255,0.4)"/>
+  </g>
+
+  <g font-family="'Hiragino Mincho ProN','Yu Mincho',Georgia,serif" text-anchor="middle" fill="#5a3d18">
+    <text x="600" y="70" font-size="46" font-weight="900" letter-spacing="6" fill="#241810">yoshiin</text>
+    <text x="600" y="102" font-size="14" font-weight="700" letter-spacing="6" fill="#c42e14">メニューバーハンコ</text>
+  </g>
+
+  <g font-family="'Hiragino Sans','Yu Gothic',system-ui,sans-serif" text-anchor="middle">
+    <text x="600" y="548" font-size="22" font-weight="700" fill="#6b4820" opacity="0.92">AIエージェントが作った素敵なプランを、</text>
+    <text x="600" y="578" font-size="22" font-weight="700" fill="#6b4820" opacity="0.92">気持ちよく承認しましょう！</text>
+  </g>
+</svg>
