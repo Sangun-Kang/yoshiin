@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>yoshiin overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      cursor: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <script>
+    const canvas = document.getElementById('scene');
+    const ctx = canvas.getContext('2d');
+
+    const P = {
+      hoverOffsetY: 104,
+      hoverSpring: 0.2,
+      hoverDamping: 0.72,
+      slamGravity: 3.9,
+      slamCatchup: 0.13,
+      bounceLift: 13,
+      faceRadius: 56,
+      markRadius: 60,
+      markFadeFrames: 260,
+      particleFadeFrames: 32,
+      backgroundAlpha: 0.008,
+    };
+
+    const BASE_TILT = -0.32;
+
+    let width = 0;
+    let height = 0;
+    let mouseX = 0;
+    let mouseY = 0;
+    let prevMouseX = 0;
+    let stamp = null;
+    let words = ['会社実印'];
+    let activeIndex = 0;
+    let marks = [];
+    let particles = [];
+    let audioContext = null;
+    let lastImpactAt = 0;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function getSealLayout(text) {
+      const raw = Array.from(String(text || '').replace(/\s+/g, ''));
+      const chars = raw.slice(0, 10);
+      const count = Math.max(chars.length, 1);
+      const rows = Math.max(1, Math.ceil(Math.sqrt(count)));
+      const cols = Math.max(1, Math.ceil(count / rows));
+      return {
+        chars: chars.length ? chars : ['印'],
+        rows,
+        cols,
+        count,
+      };
+    }
+
+    function getActiveWord() {
+      return words[activeIndex] || words[0] || '印';
+    }
+
+    function normalizeWords(inputWords) {
+      if (!Array.isArray(inputWords)) {
+        return ['印'];
+      }
+
+      const clean = inputWords
+        .map(word => String(word ?? '').trim())
+        .filter(Boolean)
+        .slice(0, 5);
+
+      return clean.length ? clean : ['印'];
+    }
+
+    function spawnStamp(payload = { point: { x: width / 2, y: height / 2 }, words: ['印'] }) {
+      const point = payload.point || { x: width / 2, y: height / 2 };
+      words = normalizeWords(payload.words);
+      activeIndex = Math.max(0, Math.min(words.length - 1, Number(payload.activeIndex) || 0));
+      mouseX = point.x;
+      mouseY = point.y;
+      prevMouseX = point.x;
+      stamp = {
+        x: point.x,
+        y: point.y - P.hoverOffsetY,
+        vx: 0,
+        vy: 0,
+        angle: 0,
+        spin: 0,
+        scaleX: 1,
+        scaleY: 1,
+        targetX: point.x,
+        targetY: point.y,
+        stage: 'hover',
+        phrase: getActiveWord(),
+      };
+      marks = [];
+      particles = [];
+    }
+
+    function beginSlam() {
+      if (!stamp || stamp.stage === 'slam') {
+        return;
+      }
+
+      const now = performance.now();
+      if (now - lastImpactAt < 180) {
+        return;
+      }
+
+      stamp.stage = 'slam';
+      stamp.targetX = mouseX;
+      stamp.targetY = mouseY;
+      stamp.phrase = getActiveWord();
+      stamp.vy = Math.max(stamp.vy, 18);
+      stamp.spin = clamp((mouseX - prevMouseX) * 0.012, -0.08, 0.08);
+    }
+
+    function ensureAudio() {
+      if (!audioContext) {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) {
+          return null;
+        }
+        audioContext = new AudioCtor();
+      }
+
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {});
+      }
+
+      return audioContext;
+    }
+
+    function playThunk() {
+      const audio = ensureAudio();
+      if (!audio) {
+        return;
+      }
+
+      const now = audio.currentTime;
+      const body = audio.createOscillator();
+      const bodyGain = audio.createGain();
+      body.type = 'triangle';
+      body.frequency.setValueAtTime(170, now);
+      body.frequency.exponentialRampToValueAtTime(68, now + 0.16);
+      bodyGain.gain.setValueAtTime(0.0001, now);
+      bodyGain.gain.exponentialRampToValueAtTime(0.15, now + 0.008);
+      bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      body.connect(bodyGain);
+      bodyGain.connect(audio.destination);
+      body.start(now);
+      body.stop(now + 0.2);
+
+      const click = audio.createOscillator();
+      const clickGain = audio.createGain();
+      click.type = 'square';
+      click.frequency.setValueAtTime(520, now);
+      click.frequency.exponentialRampToValueAtTime(220, now + 0.045);
+      clickGain.gain.setValueAtTime(0.08, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+      click.connect(clickGain);
+      clickGain.connect(audio.destination);
+      click.start(now);
+      click.stop(now + 0.06);
+    }
+
+    function addParticles(x, y) {
+      for (let i = 0; i < 16; i += 1) {
+        const angle = (Math.PI * 2 * i) / 16 + (Math.random() - 0.5) * 0.16;
+        const speed = 2.5 + Math.random() * 4.5;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed * 0.46 - 1.1,
+          life: 0,
+          ttl: P.particleFadeFrames + Math.random() * 10,
+          radius: 1.6 + Math.random() * 3.2,
+        });
+      }
+    }
+
+    function createBlobs() {
+      return Array.from({ length: 7 }, () => {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 54 + Math.random() * 26;
+        return {
+          x: Math.cos(angle) * distance,
+          y: Math.sin(angle) * distance,
+          r: 2.5 + Math.random() * 5,
+        };
+      });
+    }
+
+    function addMark(x, y, phrase) {
+      marks.push({
+        x,
+        y,
+        phrase,
+        rotation: (Math.random() - 0.5) * 0.18,
+        scale: 0.96 + Math.random() * 0.06,
+        life: 0,
+        ttl: P.markFadeFrames,
+        blobs: createBlobs(),
+      });
+
+      if (marks.length > 8) {
+        marks.shift();
+      }
+    }
+
+    function impactStamp() {
+      stamp.stage = 'recover';
+      stamp.y = stamp.targetY - 6;
+      stamp.vy = -P.bounceLift;
+      stamp.vx *= 0.2;
+      stamp.scaleX = 1.06;
+      stamp.scaleY = 0.9;
+      lastImpactAt = performance.now();
+      addMark(stamp.targetX, stamp.targetY + 2, stamp.phrase);
+      addParticles(stamp.targetX, stamp.targetY + 2);
+      playThunk();
+      window.bridge.stampImpact(stamp.phrase);
+      stamp.phrase = getActiveWord();
+    }
+
+    function updateStamp() {
+      if (!stamp) {
+        return;
+      }
+
+      if (stamp.stage === 'hover' || stamp.stage === 'recover') {
+        const targetX = mouseX;
+        const targetY = mouseY - P.hoverOffsetY;
+        stamp.vx = (stamp.vx + (targetX - stamp.x) * P.hoverSpring) * P.hoverDamping;
+        stamp.vy = (stamp.vy + (targetY - stamp.y) * P.hoverSpring) * P.hoverDamping;
+        stamp.x += stamp.vx;
+        stamp.y += stamp.vy;
+        stamp.angle = clamp(stamp.vx * 0.006, -0.05, 0.05);
+        stamp.scaleX += (1 - stamp.scaleX) * 0.18;
+        stamp.scaleY += (1 - stamp.scaleY) * 0.18;
+
+        if (stamp.stage === 'recover' && Math.abs(stamp.y - targetY) < 4 && Math.abs(stamp.vy) < 1.2) {
+          stamp.stage = 'hover';
+        }
+
+        stamp.phrase = getActiveWord();
+        return;
+      }
+
+      stamp.vx += (stamp.targetX - stamp.x) * P.slamCatchup;
+      stamp.vx *= 0.82;
+      stamp.x += stamp.vx;
+      stamp.vy += P.slamGravity;
+      stamp.y += stamp.vy;
+      stamp.angle += stamp.spin;
+      stamp.spin *= 0.92;
+      stamp.scaleX += (0.98 - stamp.scaleX) * 0.2;
+      stamp.scaleY += (1.02 - stamp.scaleY) * 0.2;
+
+      if (stamp.y >= stamp.targetY - 8) {
+        impactStamp();
+      }
+    }
+
+    function updateMarks() {
+      marks = marks.filter(mark => {
+        mark.life += 1;
+        return mark.life < mark.ttl;
+      });
+    }
+
+    function updateParticles() {
+      particles = particles.filter(particle => {
+        particle.life += 1;
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vx *= 0.94;
+        particle.vy = particle.vy * 0.94 + 0.22;
+        return particle.life < particle.ttl;
+      });
+    }
+
+    // Draws a circular seal design (front-face, upright view).
+    // Used for ink marks on canvas. Center is at ctx origin.
+    function drawSealDesign(phrase, radius, color) {
+      const layout = getSealLayout(phrase);
+
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Outer ring
+      ctx.lineWidth = radius * 0.09;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Second inner ring
+      ctx.lineWidth = radius * 0.025;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.92, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner square frame — sized to fit inside the second ring
+      const side = radius * 1.28;
+      ctx.lineWidth = radius * 0.06;
+      ctx.strokeRect(-side / 2, -side / 2, side, side);
+
+      // Decoration dot near 12 o'clock, just inside outer ring
+      ctx.beginPath();
+      ctx.arc(0, -(radius * 0.88), radius * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Characters
+      const innerSide = radius * 1.28;
+      const cellW = (innerSide * 0.86) / layout.cols;
+      const cellH = (innerSide * 0.86) / layout.rows;
+      const fontSize = Math.floor(Math.min(cellW, cellH) * 0.88);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `900 ${fontSize}px "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif`;
+
+      layout.chars.forEach((char, i) => {
+        const col = i % layout.cols;
+        const row = Math.floor(i / layout.cols);
+        const x = -((layout.cols - 1) * cellW) / 2 + col * cellW;
+        const y = -((layout.rows - 1) * cellH) / 2 + row * cellH;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(1.02, 1.12);
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+      });
+    }
+
+    function drawInkMark(mark) {
+      const fade = 1 - mark.life / mark.ttl;
+      const alpha = fade > 0.25 ? 0.9 : fade * 3.2;
+
+      ctx.save();
+      ctx.translate(mark.x, mark.y);
+      ctx.rotate(mark.rotation);
+      ctx.scale(mark.scale + (1 - fade) * 0.02, mark.scale + (1 - fade) * 0.02);
+      ctx.globalAlpha = alpha;
+
+      drawSealDesign(mark.phrase, P.markRadius, '#f04b21');
+
+      for (const blob of mark.blobs) {
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(240, 75, 33, 0.84)';
+        ctx.arc(blob.x, blob.y, blob.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawParticle(particle) {
+      const fade = 1 - particle.life / particle.ttl;
+      ctx.save();
+      ctx.globalAlpha = fade * 0.75;
+      ctx.fillStyle = '#f04b21';
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.radius * fade, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawStampShadow() {
+      // Shadow offset slightly right/down to match the rightward tilt
+      const shadowX = mouseX + 10;
+      const shadowY = mouseY + 5;
+      const spread = stamp.stage === 'slam' ? 30 : 40;
+      ctx.save();
+      ctx.translate(shadowX, shadowY);
+      ctx.fillStyle = 'rgba(20, 12, 6, 0.18)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, spread, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawStampCursor() {
+      if (!stamp) {
+        return;
+      }
+
+      drawStampShadow();
+
+      ctx.save();
+      ctx.translate(stamp.x, stamp.y);
+      ctx.rotate(BASE_TILT + stamp.angle);
+      ctx.scale(stamp.scaleX, stamp.scaleY);
+
+      // Dimensions (all in local rotated coords, Y increases downward)
+      // Origin is the stamp's hover position. The stamp hangs downward from here.
+      const totalH = 170;
+      const capH = 22;       // rounded top cap half-height
+      const capR = 16;       // top cap horizontal radius
+      const bodyTopY = -totalH + capH;
+      const bodyBotY = -40;  // where body meets neck
+      const neckH = 18;
+      const neckR = 13;
+      const headR = 24;      // stamp head ellipse horizontal radius
+      const headThick = 10;  // side thickness of the stamp head
+      const faceR = P.faceRadius;
+
+      // Ivory/celluloid gradient for the handle body
+      const ivoGrad = ctx.createLinearGradient(0, bodyTopY, 0, bodyBotY);
+      ivoGrad.addColorStop(0,   '#fff2b8');
+      ivoGrad.addColorStop(0.25, '#f4d56f');
+      ivoGrad.addColorStop(0.55, '#e2b841');
+      ivoGrad.addColorStop(0.80, '#b98826');
+      ivoGrad.addColorStop(1,   '#8b5f18');
+
+      // Darker edge gradient for right-side shading
+      const edgeGrad = ctx.createLinearGradient(-capR, 0, capR, 0);
+      edgeGrad.addColorStop(0, 'rgba(120, 70, 10, 0)');
+      edgeGrad.addColorStop(1, 'rgba(120, 70, 10, 0.28)');
+
+      // --- Top cap (rounded dome) ---
+      ctx.fillStyle = ivoGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, bodyTopY, capR, capH, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // --- Main body (trapezoid widening towards bottom) ---
+      // Body top is narrow (capR wide), bottom is wider (neckR * 1.6 wide)
+      const bodyBotHW = neckR * 1.5;
+      ctx.fillStyle = ivoGrad;
+      ctx.beginPath();
+      ctx.moveTo(-capR, bodyTopY);
+      ctx.bezierCurveTo(-capR - 4, bodyTopY + (bodyBotY - bodyTopY) * 0.4,
+                        -bodyBotHW - 2, bodyBotY - (bodyBotY - bodyTopY) * 0.3,
+                        -bodyBotHW, bodyBotY);
+      ctx.lineTo(bodyBotHW, bodyBotY);
+      ctx.bezierCurveTo(bodyBotHW + 2, bodyBotY - (bodyBotY - bodyTopY) * 0.3,
+                        capR + 4, bodyTopY + (bodyBotY - bodyTopY) * 0.4,
+                        capR, bodyTopY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right-edge shading overlay on body
+      ctx.fillStyle = edgeGrad;
+      ctx.beginPath();
+      ctx.moveTo(-capR, bodyTopY);
+      ctx.bezierCurveTo(-capR - 4, bodyTopY + (bodyBotY - bodyTopY) * 0.4,
+                        -bodyBotHW - 2, bodyBotY - (bodyBotY - bodyTopY) * 0.3,
+                        -bodyBotHW, bodyBotY);
+      ctx.lineTo(bodyBotHW, bodyBotY);
+      ctx.bezierCurveTo(bodyBotHW + 2, bodyBotY - (bodyBotY - bodyTopY) * 0.3,
+                        capR + 4, bodyTopY + (bodyBotY - bodyTopY) * 0.4,
+                        capR, bodyTopY);
+      ctx.closePath();
+      ctx.fill();
+
+      // --- Waist concavity (narrow neck between body and head) ---
+      const neckTopY = bodyBotY;
+      const neckBotY = bodyBotY + neckH;
+      const neckGrad = ctx.createLinearGradient(0, neckTopY, 0, neckBotY);
+      neckGrad.addColorStop(0, '#7a5014');
+      neckGrad.addColorStop(1, '#4a2e0a');
+      ctx.fillStyle = neckGrad;
+      ctx.beginPath();
+      ctx.moveTo(-bodyBotHW, neckTopY);
+      ctx.quadraticCurveTo(-neckR, neckTopY + neckH * 0.5, -neckR, neckBotY);
+      ctx.lineTo(neckR, neckBotY);
+      ctx.quadraticCurveTo(neckR, neckTopY + neckH * 0.5, bodyBotHW, neckTopY);
+      ctx.closePath();
+      ctx.fill();
+
+      // --- Stamp head side thickness (dark ring visible from angle) ---
+      const headTopY = neckBotY;
+      const headBotY = headTopY + headThick;
+      ctx.fillStyle = '#2f1e0a';
+      ctx.beginPath();
+      ctx.ellipse(0, headTopY, headR, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // --- Stamp face (ink face — bottom of stamp, tilted perspective ellipse) ---
+      ctx.fillStyle = '#f04b21';
+      ctx.beginPath();
+      ctx.ellipse(0, headBotY, faceR, faceR * 0.30, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Left-edge highlight on handle (glossy stripe)
+      const hiliteGrad = ctx.createLinearGradient(-capR, bodyTopY, -capR + 12, bodyTopY);
+      hiliteGrad.addColorStop(0, 'rgba(255, 252, 210, 0.55)');
+      hiliteGrad.addColorStop(1, 'rgba(255, 252, 210, 0)');
+      ctx.fillStyle = hiliteGrad;
+      ctx.beginPath();
+      ctx.moveTo(-capR, bodyTopY);
+      ctx.lineTo(-capR + 8, bodyTopY);
+      ctx.lineTo(-bodyBotHW + 5, bodyBotY);
+      ctx.lineTo(-bodyBotHW, bodyBotY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Alignment dot on right side of handle (reference image: small black dot)
+      const dotY = bodyTopY + (bodyBotY - bodyTopY) * 0.55;
+      const dotX = capR - 4;
+      ctx.fillStyle = 'rgba(20, 10, 2, 0.85)';
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawInstruction() {
+      if (!stamp) {
+        return;
+      }
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '600 14px "Hiragino Sans", "Yu Gothic", system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      ctx.fillText(`クリックでスタンプ・Escで終了・${words.length}個の印鑑ワード登録中`, width / 2, height - 38);
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = `rgba(0, 0, 0, ${P.backgroundAlpha})`;
+      ctx.fillRect(0, 0, width, height);
+
+      for (const mark of marks) {
+        drawInkMark(mark);
+      }
+
+      for (const particle of particles) {
+        drawParticle(particle);
+      }
+
+      drawStampCursor();
+      drawInstruction();
+    }
+
+    function loop() {
+      updateStamp();
+      updateMarks();
+      updateParticles();
+      draw();
+      prevMouseX = mouseX;
+      requestAnimationFrame(loop);
+    }
+
+    resize();
+    loop();
+
+    window.addEventListener('resize', resize);
+    document.addEventListener('mousemove', event => {
+      mouseX = event.clientX;
+      mouseY = event.clientY;
+    });
+    document.addEventListener('mousedown', () => {
+      beginSlam();
+    });
+
+    window.bridge.onSpawnStamp(payload => {
+      spawnStamp(payload);
+    });
+  </script>
+</body>
+</html>

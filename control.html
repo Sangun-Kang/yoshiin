@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yoshiin コントロールパネル</title>
+  <style>
+    :root {
+      --paper: #efe6d5;
+      --paper-deep: #e2d2b7;
+      --panel: rgba(255, 251, 244, 0.84);
+      --line: rgba(36, 24, 16, 0.1);
+      --ink: #241810;
+      --muted: #6f6256;
+      --seal: #f04b21;
+      --seal-soft: rgba(240, 75, 33, 0.12);
+      --button: #26211d;
+      --button-alt: rgba(38, 33, 29, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.8), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(240, 75, 33, 0.12), transparent 34%),
+        linear-gradient(160deg, var(--paper), var(--paper-deep));
+      font-family: "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    }
+
+    body {
+      padding: 8px;
+    }
+
+    .shell {
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow:
+        0 12px 28px rgba(58, 41, 22, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.56);
+      backdrop-filter: blur(10px);
+    }
+
+    .shell::before {
+      content: "";
+      position: fixed;
+      inset: 8px;
+      border-radius: 14px;
+      pointer-events: none;
+      background:
+        linear-gradient(transparent 0, transparent calc(100% - 1px), rgba(36, 24, 16, 0.03) calc(100% - 1px)),
+        linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), rgba(36, 24, 16, 0.025) calc(100% - 1px));
+      background-size: 100% 28px, 28px 100%;
+      opacity: 0.6;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tagline {
+      margin: 0;
+      color: var(--seal);
+      font-size: 10.5px;
+      line-height: 1.4;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .counter {
+      flex: none;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: var(--seal);
+      background: var(--seal-soft);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
+    .body {
+      padding: 8px 10px 10px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 5px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 28px 1fr 22px;
+      gap: 7px;
+      align-items: center;
+      padding: 5px 7px;
+      border-radius: 10px;
+      border: 1px solid rgba(36, 24, 16, 0.08);
+      background: rgba(255, 255, 255, 0.72);
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+
+    .row.active {
+      border-color: rgba(240, 75, 33, 0.34);
+      background: rgba(255, 246, 241, 0.92);
+    }
+
+    .index {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: var(--seal);
+      background: var(--seal-soft);
+      border: 1px solid rgba(240, 75, 33, 0.16);
+      font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    input[data-word-input] {
+      width: 100%;
+      border: 1px solid rgba(36, 24, 16, 0.08);
+      border-radius: 8px;
+      padding: 7px 9px;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    input[data-word-input]:focus {
+      border-color: rgba(240, 75, 33, 0.56);
+      box-shadow: 0 0 0 2px rgba(240, 75, 33, 0.12);
+    }
+
+    .picker {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--seal);
+      cursor: pointer;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: saturate(1.05);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .save {
+      color: var(--ink);
+      background: var(--button-alt);
+    }
+
+    .activate {
+      color: #fff9f4;
+      background: linear-gradient(180deg, #2d2721, #171310);
+    }
+
+    .send-enter-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 6px;
+      padding: 6px 9px;
+      border-radius: 10px;
+      border: 1px solid rgba(36, 24, 16, 0.08);
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .send-enter-row input[type="checkbox"] {
+      width: 13px;
+      height: 13px;
+      margin: 0;
+      accent-color: var(--seal);
+      cursor: pointer;
+    }
+
+    .status {
+      min-height: 14px;
+      margin: 6px 2px 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .status.error {
+      color: #9f2d12;
+    }
+
+    .permission {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 6px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      border: 1px solid rgba(36, 24, 16, 0.08);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .permission.visible {
+      display: flex;
+    }
+
+    .permission-copy {
+      min-width: 0;
+    }
+
+    .permission-title {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .permission-text {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    .permission.bad .permission-title {
+      color: #9f2d12;
+    }
+
+    .permission button {
+      flex: none;
+      padding: 7px 10px;
+      font-size: 10px;
+      background: var(--button-alt);
+      color: var(--ink);
+    }
+
+    .send-enter-hint {
+      margin-left: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 400;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="header">
+      <div class="header-top">
+        <h1>yoshiin</h1>
+        <div class="counter" id="counter">0 / 5</div>
+      </div>
+      <p class="tagline">AIエージェントが作った素敵なプランを、気持ちよく承認しましょう！</p>
+    </header>
+
+    <section class="body">
+      <div class="stack" id="fields">
+        <label class="row">
+          <span class="index">1</span>
+          <input data-word-input maxlength="24" placeholder="会社実印" />
+          <input class="picker" data-word-picker type="radio" name="active-word" />
+        </label>
+        <label class="row">
+          <span class="index">2</span>
+          <input data-word-input maxlength="24" placeholder="会社認印" />
+          <input class="picker" data-word-picker type="radio" name="active-word" />
+        </label>
+        <label class="row">
+          <span class="index">3</span>
+          <input data-word-input maxlength="24" placeholder="承認" />
+          <input class="picker" data-word-picker type="radio" name="active-word" />
+        </label>
+        <label class="row">
+          <span class="index">4</span>
+          <input data-word-input maxlength="24" placeholder="了解" />
+          <input class="picker" data-word-picker type="radio" name="active-word" />
+        </label>
+        <label class="row">
+          <span class="index">5</span>
+          <input data-word-input maxlength="24" placeholder="確認済" />
+          <input class="picker" data-word-picker type="radio" name="active-word" />
+        </label>
+      </div>
+
+      <label class="send-enter-row">
+        <input type="checkbox" id="send-enter" />
+        <span>スタンプ後に Enter を送信<small class="send-enter-hint">（ターミナル用）</small></span>
+      </label>
+
+      <div class="actions">
+        <button class="save" id="save">保存</button>
+        <button class="activate" id="activate">発動</button>
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <div class="permission" id="permission">
+        <div class="permission-copy">
+          <p class="permission-title" id="permission-title"></p>
+          <p class="permission-text" id="permission-text"></p>
+        </div>
+        <button id="permission-action">アクセスを許可</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const inputs = Array.from(document.querySelectorAll('[data-word-input]'));
+    const pickers = Array.from(document.querySelectorAll('[data-word-picker]'));
+    const rows = Array.from(document.querySelectorAll('.row'));
+    const counter = document.getElementById('counter');
+    const status = document.getElementById('status');
+    const permission = document.getElementById('permission');
+    const permissionTitle = document.getElementById('permission-title');
+    const permissionText = document.getElementById('permission-text');
+    const permissionAction = document.getElementById('permission-action');
+    const saveButton = document.getElementById('save');
+    const activateButton = document.getElementById('activate');
+    const sendEnterCheckbox = document.getElementById('send-enter');
+    let activeIndex = 0;
+
+    function readWords() {
+      return inputs.map(input => input.value.trim()).slice(0, 5);
+    }
+
+    function getDenseActiveIndex() {
+      const values = readWords();
+      const current = values[activeIndex];
+      if (!current) {
+        return 0;
+      }
+
+      return values.slice(0, activeIndex + 1).filter(Boolean).length - 1;
+    }
+
+    function getPayload() {
+      const words = readWords().filter(Boolean);
+      const safeIndex = words.length ? Math.min(getDenseActiveIndex(), words.length - 1) : 0;
+      return {
+        words,
+        activeIndex: safeIndex,
+        sendEnter: sendEnterCheckbox.checked,
+      };
+    }
+
+    function setWords(words = [], nextActiveIndex = 0) {
+      inputs.forEach((input, index) => {
+        input.value = words[index] || '';
+      });
+      activeIndex = nextActiveIndex;
+      syncSelection();
+      updateCounter();
+    }
+
+    function syncSelection() {
+      const values = readWords();
+      const filledRows = values
+        .map((value, index) => ({ value, index }))
+        .filter(item => item.value);
+
+      if (!filledRows.length) {
+        activeIndex = 0;
+      } else if (!values[activeIndex]) {
+        activeIndex = filledRows[Math.min(getDenseActiveIndex(), filledRows.length - 1)]?.index ?? filledRows[0].index;
+      }
+
+      rows.forEach((row, index) => {
+        const enabled = Boolean(values[index]);
+        row.classList.toggle('active', enabled && index === activeIndex);
+        pickers[index].checked = enabled && index === activeIndex;
+        pickers[index].disabled = !enabled;
+      });
+    }
+
+    function updateCounter() {
+      const words = readWords().filter(Boolean);
+      counter.textContent = `${words.length} / 5`;
+      syncSelection();
+    }
+
+    function setStatus(nextStatus) {
+      if (!nextStatus) {
+        status.textContent = '';
+        status.className = 'status';
+        return;
+      }
+
+      status.textContent = nextStatus.text || '';
+      status.className = nextStatus.kind === 'error' ? 'status error' : 'status';
+    }
+
+    function renderPermission(payload = {}) {
+      if (payload.platform !== 'darwin') {
+        permission.className = 'permission';
+        return;
+      }
+
+      permission.className = payload.accessibilityTrusted ? 'permission visible' : 'permission visible bad';
+      if (payload.accessibilityTrusted) {
+        permissionTitle.textContent = 'アクセシビリティ 有効';
+        permissionText.textContent = `${payload.accessibilityClientName || 'Electron'} が他のアプリへキー入力を送信できます。`;
+        permissionAction.textContent = '再確認';
+      } else {
+        permissionTitle.textContent = 'アクセシビリティが必要';
+        permissionText.textContent = `システム設定 > プライバシーとセキュリティ > アクセシビリティ で ${payload.accessibilityClientName || 'Electron'} を有効にしてください。`;
+        permissionAction.textContent = 'アクセスを許可';
+      }
+    }
+
+    inputs.forEach(input => {
+      input.addEventListener('input', () => {
+        updateCounter();
+      });
+      input.addEventListener('focus', () => {
+        const index = inputs.indexOf(input);
+        if (input.value.trim()) {
+          activeIndex = index;
+          updateCounter();
+        }
+      });
+    });
+
+    pickers.forEach((picker, index) => {
+      picker.addEventListener('change', () => {
+        if (picker.checked) {
+          activeIndex = index;
+          updateCounter();
+        }
+      });
+    });
+
+    saveButton.addEventListener('click', () => {
+      window.bridge.saveSettings(getPayload());
+    });
+
+    activateButton.addEventListener('click', () => {
+      window.bridge.activateStampMode(getPayload());
+    });
+
+    permissionAction.addEventListener('click', () => {
+      window.bridge.requestAccessibilityPermission();
+    });
+
+    window.bridge.onControlState(payload => {
+      setWords(payload.words || [], payload.activeIndex || 0);
+      sendEnterCheckbox.checked = Boolean(payload.sendEnter);
+      setStatus(payload.status || null);
+      renderPermission(payload);
+    });
+
+    window.bridge.requestControlState();
+    updateCounter();
+  </script>
+</body>
+</html>
