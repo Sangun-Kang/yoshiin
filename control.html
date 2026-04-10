@@ -297,6 +297,56 @@
       font-weight: 400;
       opacity: 0.8;
     }
+
+    .detail {
+      margin-top: 6px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      border: 1px solid rgba(36, 24, 16, 0.08);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .detail-label {
+      display: block;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .detail-hint {
+      margin-left: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 400;
+      opacity: 0.85;
+    }
+
+    .detail textarea {
+      width: 100%;
+      resize: none;
+      border: 1px solid rgba(36, 24, 16, 0.08);
+      border-radius: 8px;
+      padding: 7px 9px;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.4;
+      outline: none;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    .detail textarea:focus {
+      border-color: rgba(240, 75, 33, 0.56);
+      box-shadow: 0 0 0 2px rgba(240, 75, 33, 0.12);
+    }
+
+    .detail textarea:disabled {
+      background: rgba(255, 255, 255, 0.4);
+      color: var(--muted);
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -304,7 +354,7 @@
     <header class="header">
       <div class="header-top">
         <h1>yoshiin</h1>
-        <div class="counter" id="counter">0 / 5</div>
+        <div class="counter" id="counter">0 / 3</div>
       </div>
       <p class="tagline">AIエージェントが作った素敵なプランを、気持ちよく承認しましょう！</p>
     </header>
@@ -313,29 +363,26 @@
       <div class="stack" id="fields">
         <label class="row">
           <span class="index">1</span>
-          <input data-word-input maxlength="24" placeholder="会社実印" />
+          <input data-word-input maxlength="10" placeholder="承認" />
           <input class="picker" data-word-picker type="radio" name="active-word" />
         </label>
         <label class="row">
           <span class="index">2</span>
-          <input data-word-input maxlength="24" placeholder="会社認印" />
+          <input data-word-input maxlength="10" placeholder="会社実印" />
           <input class="picker" data-word-picker type="radio" name="active-word" />
         </label>
         <label class="row">
           <span class="index">3</span>
-          <input data-word-input maxlength="24" placeholder="承認" />
+          <input data-word-input maxlength="10" placeholder="了解" />
           <input class="picker" data-word-picker type="radio" name="active-word" />
         </label>
-        <label class="row">
-          <span class="index">4</span>
-          <input data-word-input maxlength="24" placeholder="了解" />
-          <input class="picker" data-word-picker type="radio" name="active-word" />
+      </div>
+
+      <div class="detail">
+        <label class="detail-label" for="text-input">
+          送信テキスト<small class="detail-hint">（空欄ならラベルをそのまま送信）</small>
         </label>
-        <label class="row">
-          <span class="index">5</span>
-          <input data-word-input maxlength="24" placeholder="確認済" />
-          <input class="picker" data-word-picker type="radio" name="active-word" />
-        </label>
+        <textarea id="text-input" rows="2" maxlength="500" placeholder="ラベルを入力してください"></textarea>
       </div>
 
       <label class="send-enter-row">
@@ -373,14 +420,16 @@
     const saveButton = document.getElementById('save');
     const activateButton = document.getElementById('activate');
     const sendEnterCheckbox = document.getElementById('send-enter');
+    const textarea = document.getElementById('text-input');
+    const textStates = ['', '', ''];
     let activeIndex = 0;
 
-    function readWords() {
-      return inputs.map(input => input.value.trim()).slice(0, 5);
+    function readLabels() {
+      return inputs.map(input => input.value.trim()).slice(0, 3);
     }
 
     function getDenseActiveIndex() {
-      const values = readWords();
+      const values = readLabels();
       const current = values[activeIndex];
       if (!current) {
         return 0;
@@ -390,7 +439,13 @@
     }
 
     function getPayload() {
-      const words = readWords().filter(Boolean);
+      const words = inputs
+        .map((input, i) => ({
+          label: input.value.trim(),
+          text: textStates[i] || '',
+        }))
+        .filter(w => w.label)
+        .slice(0, 3);
       const safeIndex = words.length ? Math.min(getDenseActiveIndex(), words.length - 1) : 0;
       return {
         words,
@@ -399,17 +454,40 @@
       };
     }
 
-    function setWords(words = [], nextActiveIndex = 0) {
+    function setWords(wordsInput = [], nextActiveIndex = 0) {
       inputs.forEach((input, index) => {
-        input.value = words[index] || '';
+        const entry = wordsInput[index];
+        if (entry && typeof entry === 'object') {
+          input.value = entry.label || '';
+          textStates[index] = entry.text || '';
+        } else if (typeof entry === 'string') {
+          input.value = entry || '';
+          textStates[index] = '';
+        } else {
+          input.value = '';
+          textStates[index] = '';
+        }
       });
       activeIndex = nextActiveIndex;
       syncSelection();
+      syncTextareaFromActive();
       updateCounter();
     }
 
+    function syncTextareaFromActive() {
+      const label = inputs[activeIndex]?.value.trim() || '';
+      textarea.value = textStates[activeIndex] || '';
+      if (label) {
+        textarea.disabled = false;
+        textarea.placeholder = `「${label}」をそのまま送信`;
+      } else {
+        textarea.disabled = true;
+        textarea.placeholder = 'ラベルを入力してください';
+      }
+    }
+
     function syncSelection() {
-      const values = readWords();
+      const values = readLabels();
       const filledRows = values
         .map((value, index) => ({ value, index }))
         .filter(item => item.value);
@@ -429,8 +507,8 @@
     }
 
     function updateCounter() {
-      const words = readWords().filter(Boolean);
-      counter.textContent = `${words.length} / 5`;
+      const labels = readLabels().filter(Boolean);
+      counter.textContent = `${labels.length} / 3`;
       syncSelection();
     }
 
@@ -466,12 +544,14 @@
     inputs.forEach(input => {
       input.addEventListener('input', () => {
         updateCounter();
+        syncTextareaFromActive();
       });
       input.addEventListener('focus', () => {
         const index = inputs.indexOf(input);
         if (input.value.trim()) {
           activeIndex = index;
           updateCounter();
+          syncTextareaFromActive();
         }
       });
     });
@@ -481,8 +561,13 @@
         if (picker.checked) {
           activeIndex = index;
           updateCounter();
+          syncTextareaFromActive();
         }
       });
+    });
+
+    textarea.addEventListener('input', () => {
+      textStates[activeIndex] = textarea.value;
     });
 
     saveButton.addEventListener('click', () => {
@@ -506,6 +591,7 @@
 
     window.bridge.requestControlState();
     updateCounter();
+    syncTextareaFromActive();
   </script>
 </body>
 </html>

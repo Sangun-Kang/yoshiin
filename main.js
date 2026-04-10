@@ -35,7 +35,7 @@ const VK_CONTROL = 0x11;
 const VK_RETURN = 0x0d;
 const VK_V = 0x56;
 const KEYUP = 0x0002;
-const MAX_WORDS = 5;
+const MAX_WORDS = 3;
 const MAC_KEY_V = 0x09;
 const MAC_KEY_RETURN = 0x24;
 const MAC_KEY_COMMAND = 0x37;
@@ -49,7 +49,7 @@ let overlayReady = false;
 let spawnQueued = false;
 let activeDisplayId = null;
 let isQuitting = false;
-let settings = { words: ['承認'], activeIndex: 0, sendEnter: false };
+let settings = { words: [{ label: '承認', text: '' }], activeIndex: 0, sendEnter: false };
 let pendingOverlayPayload = null;
 let clipboardRestoreTimer = null;
 let pendingControlStatus = null;
@@ -107,7 +107,21 @@ function sanitizeWords(rawWords) {
   }
 
   return rawWords
-    .map(word => String(word ?? '').trim())
+    .map(entry => {
+      if (typeof entry === 'string') {
+        const label = entry.trim();
+        return label ? { label, text: '' } : null;
+      }
+      if (entry && typeof entry === 'object') {
+        const label = String(entry.label ?? '').trim();
+        const text = String(entry.text ?? '');
+        if (!label) {
+          return null;
+        }
+        return { label, text };
+      }
+      return null;
+    })
     .filter(Boolean)
     .slice(0, MAX_WORDS);
 }
@@ -143,7 +157,7 @@ function loadSettings() {
     const saved = JSON.parse(fs.readFileSync(getSettingsPath(), 'utf8'));
     return normalizeSettings(saved);
   } catch (_error) {
-    return { words: ['承認'], activeIndex: 0, sendEnter: false };
+    return { words: [{ label: '承認', text: '' }], activeIndex: 0, sendEnter: false };
   }
 }
 
@@ -188,8 +202,8 @@ function createTrayIcon() {
 }
 
 function buildTrayMenu() {
-  const wordSummary = settings.words.length ? settings.words.join(' / ') : '印鑑ワード未登録';
-  const activeLabel = settings.words[settings.activeIndex] || 'なし';
+  const wordSummary = settings.words.length ? settings.words.map(w => w.label).join(' / ') : '印鑑ワード未登録';
+  const activeLabel = settings.words[settings.activeIndex]?.label || 'なし';
   return Menu.buildFromTemplate([
     { label: 'コントロールパネルを開く', click: showControlWindow },
     { label: 'スタンプモードを発動', enabled: settings.words.length > 0, click: () => activateStampMode(settings) },
@@ -287,7 +301,7 @@ function positionWindowToTray() {
 function createControlWindow() {
   controlWindow = new BrowserWindow({
     width: 320,
-    height: 460,
+    height: 470,
     frame: false,
     resizable: false,
     maximizable: false,

@@ -54,7 +54,7 @@
     let mouseY = 0;
     let prevMouseX = 0;
     let stamp = null;
-    let words = ['会社実印'];
+    let words = [{ label: '会社実印', text: '' }];
     let activeIndex = 0;
     let marks = [];
     let particles = [];
@@ -84,21 +84,43 @@
       };
     }
 
-    function getActiveWord() {
-      return words[activeIndex] || words[0] || '印';
-    }
-
     function normalizeWords(inputWords) {
       if (!Array.isArray(inputWords)) {
-        return ['印'];
+        return [{ label: '印', text: '' }];
       }
 
       const clean = inputWords
-        .map(word => String(word ?? '').trim())
+        .map(entry => {
+          if (typeof entry === 'string') {
+            const label = String(entry).trim();
+            return label ? { label, text: '' } : null;
+          }
+          if (entry && typeof entry === 'object') {
+            const label = String(entry.label ?? '').trim();
+            const text = String(entry.text ?? '');
+            if (!label) {
+              return null;
+            }
+            return { label, text };
+          }
+          return null;
+        })
         .filter(Boolean)
-        .slice(0, 5);
+        .slice(0, 3);
 
-      return clean.length ? clean : ['印'];
+      return clean.length ? clean : [{ label: '印', text: '' }];
+    }
+
+    function getActiveLabel() {
+      const entry = words[activeIndex] || words[0];
+      return (entry && entry.label) || '印';
+    }
+
+    function getActiveText() {
+      const entry = words[activeIndex] || words[0];
+      if (!entry) return '印';
+      const text = entry.text && entry.text.length ? entry.text : entry.label;
+      return text || '印';
     }
 
     function spawnStamp(payload = { point: { x: width / 2, y: height / 2 }, words: ['印'] }) {
@@ -120,7 +142,7 @@
         targetX: point.x,
         targetY: point.y,
         stage: 'hover',
-        phrase: getActiveWord(),
+        phrase: getActiveLabel(),
       };
       marks = [];
       particles = [];
@@ -139,7 +161,7 @@
       stamp.stage = 'slam';
       stamp.targetX = mouseX;
       stamp.targetY = mouseY;
-      stamp.phrase = getActiveWord();
+      stamp.phrase = getActiveLabel();
       stamp.vy = Math.max(stamp.vy, 18);
       stamp.spin = clamp((mouseX - prevMouseX) * 0.012, -0.08, 0.08);
     }
@@ -249,8 +271,8 @@
       addMark(stamp.targetX, stamp.targetY + 2, stamp.phrase);
       addParticles(stamp.targetX, stamp.targetY + 2);
       playThunk();
-      window.bridge.stampImpact(stamp.phrase);
-      stamp.phrase = getActiveWord();
+      window.bridge.stampImpact(getActiveText());
+      stamp.phrase = getActiveLabel();
     }
 
     function updateStamp() {
@@ -273,7 +295,7 @@
           stamp.stage = 'hover';
         }
 
-        stamp.phrase = getActiveWord();
+        stamp.phrase = getActiveLabel();
         return;
       }
 
